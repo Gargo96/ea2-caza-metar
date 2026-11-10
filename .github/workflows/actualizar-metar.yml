@@ -4,14 +4,19 @@ name: Actualizar METAR
 on:
   workflow_dispatch:
   schedule:
-    - cron: "3 * * * *"
+    - cron: "7,22,37,52 * * * *"
 
 permissions:
   contents: write
 
+concurrency:
+  group: actualizar-metar
+  cancel-in-progress: false
+
 jobs:
   actualizar:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Descargar repositorio
@@ -22,15 +27,17 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Consultar METAR
+      - name: Consultar NOAA y actualizar archivo
         run: python actualizar_metar.py
 
-      - name: Guardar datos actualizados
+      - name: Guardar metar.json si cambio
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add metar.json
-          if ! git diff --cached --quiet; then
+          if git diff --cached --quiet; then
+            echo "No hay cambios en metar.json"
+          else
             git commit -m "Actualizar METAR"
             git push
           fi
