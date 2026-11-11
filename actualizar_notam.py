@@ -53,6 +53,11 @@ def get_links(html, base_url):
 
 
 def discover():
+    print("=== ENLACES ENCONTRADOS EN AIS DINACIA ===", flush=True)
+for etiqueta, url in candidates:
+    if any(x in (etiqueta + " " + url).upper() for x in ("PIB", "NOTAM", "SERIE", ".PDF")):
+        print(f"ETIQUETA: {etiqueta} | URL: {url}", flush=True)
+print("=== FIN DE ENLACES ===", flush=True)
         print("=== ENLACES ENCONTRADOS EN AIS DINACIA ===", flush=True)
     for label, url in candidates:
         print(f"TEXTO: {label} | URL: {url}", flush=True)
