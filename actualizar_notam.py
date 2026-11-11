@@ -53,6 +53,10 @@ def get_links(html, base_url):
 
 
 def discover():
+        print("=== ENLACES ENCONTRADOS EN AIS DINACIA ===", flush=True)
+    for label, url in candidates:
+        print(f"TEXTO: {label} | URL: {url}", flush=True)
+    print("=== FIN DE ENLACES ===", flush=True)
     """Busca un PDF inequívoco por serie en la portada AIS."""
     response = get(BASE + "/ais")
     candidates = get_links(response.text, response.url)
