@@ -18,6 +18,7 @@ import requests
 from bs4 import BeautifulSoup
 from pypdf import PdfReader
 
+
 BASE = "https://www.dinacia.gub.uy"
 OUT = Path(__file__).resolve().with_name("notam.json")
 
@@ -43,6 +44,7 @@ def get(url):
 
 def get_links(html, base_url):
     soup = BeautifulSoup(html, "html.parser")
+
     return [
         (
             a.get_text(" ", strip=True),
@@ -53,18 +55,42 @@ def get_links(html, base_url):
 
 
 def discover():
-    print("=== ENLACES ENCONTRADOS EN AIS DINACIA ===", flush=True)
-for etiqueta, url in candidates:
-    if any(x in (etiqueta + " " + url).upper() for x in ("PIB", "NOTAM", "SERIE", ".PDF")):
-        print(f"ETIQUETA: {etiqueta} | URL: {url}", flush=True)
-print("=== FIN DE ENLACES ===", flush=True)
-        print("=== ENLACES ENCONTRADOS EN AIS DINACIA ===", flush=True)
-    for label, url in candidates:
-        print(f"TEXTO: {label} | URL: {url}", flush=True)
-    print("=== FIN DE ENLACES ===", flush=True)
-    """Busca un PDF inequívoco por serie en la portada AIS."""
+    """Busca los PDF A/C/D y muestra enlaces para diagnóstico."""
+
     response = get(BASE + "/ais")
     candidates = get_links(response.text, response.url)
+
+    print(
+        "=== ENLACES ENCONTRADOS EN AIS DINACIA ===",
+        flush=True,
+    )
+
+    print(
+        f"URL consultada: {response.url}",
+        flush=True,
+    )
+
+    print(
+        f"Total de enlaces encontrados: {len(candidates)}",
+        flush=True,
+    )
+
+    for label, url in candidates:
+        combined = (label + " " + url).upper()
+
+        if any(
+            term in combined
+            for term in ("PIB", "NOTAM", "SERIE", ".PDF")
+        ):
+            print(
+                f"TEXTO: {label} | URL: {url}",
+                flush=True,
+            )
+
+    print(
+        "=== FIN DE ENLACES ===",
+        flush=True,
+    )
 
     result = {}
 
@@ -83,6 +109,13 @@ print("=== FIN DE ENLACES ===", flush=True)
 
         pdfs = list(dict.fromkeys(pdfs))
 
+        print(
+            f"Serie {series}: "
+            f"{len(pdfs)} PDF encontrados "
+            f"con prefijo {prefix}",
+            flush=True,
+        )
+
         if len(pdfs) != 1:
             raise RuntimeError(
                 f"Serie {series}: se esperaba un PDF "
@@ -98,7 +131,9 @@ def extract_pdf(url):
     response = get(url)
 
     if not response.content.startswith(b"%PDF"):
-        raise ValueError("La respuesta no es un PDF válido")
+        raise ValueError(
+            "La respuesta no es un PDF válido"
+        )
 
     reader = PdfReader(io.BytesIO(response.content))
 
@@ -108,7 +143,9 @@ def extract_pdf(url):
     )
 
     if len(text.strip()) < 100:
-        raise ValueError("PDF sin texto extraíble suficiente")
+        raise ValueError(
+            "PDF sin texto extraíble suficiente"
+        )
 
     return len(reader.pages), text
 
@@ -164,7 +201,7 @@ def main():
 
                 print(
                     f"Serie {series}: "
-                    f"{pages} paginas; "
+                    f"{pages} páginas; "
                     f"{len(ids)} identificadores candidatos; "
                     "PDF OK",
                     flush=True,
@@ -186,7 +223,6 @@ def main():
     except Exception as error:
         result["errors"].append(str(error))
 
-    # Guardar el diagnóstico incluso si hay errores.
     OUT.write_text(
         json.dumps(
             result,
