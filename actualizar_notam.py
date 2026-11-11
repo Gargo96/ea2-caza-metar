@@ -23,9 +23,9 @@ BASE = "https://www.dinacia.gub.uy"
 OUT = Path(__file__).resolve().with_name("notam.json")
 
 PREFIXES = {
-    "A": "IPIB",
-    "C": "NPIB",
-    "D": "DPIB",
+    "A": "PIBSERIEA",
+    "C": "PIBSERIEC",
+    "D": "PIBSERIED",
 }
 
 HEADERS = {
