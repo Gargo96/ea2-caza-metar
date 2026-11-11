@@ -1,257 +1,213 @@
-
-#!/usr/bin/env python3
-"""Extracción experimental de PIB DINACIA A/C/D.
-
-Genera notam.json para revisión técnica.
-NO verifica vigencia, cancelaciones ni completitud operacional.
-"""
-
-import io
-import json
-import re
-import sys
-from datetime import datetime, timezone
-from pathlib import Path
-from urllib.parse import urljoin, urlparse
-
-import requests
-from bs4 import BeautifulSoup
-from pypdf import PdfReader
-
-
-BASE = "https://www.dinacia.gub.uy"
-OUT = Path(__file__).resolve().with_name("notam.json")
-
-PREFIXES = {
-    "A": "PIBSERIEA",
-    "C": "PIBSERIEC",
-    "D": "PIBSERIED",
-}
-
-HEADERS = {
-    "User-Agent": "EA2-CAZA-PIB-monitor/0.1",
-}
-
-session = requests.Session()
-session.headers.update(HEADERS)
-
-
-def get(url):
-    response = session.get(url, timeout=40)
-    response.raise_for_status()
-    return response
-
-
-def get_links(html, base_url):
-    soup = BeautifulSoup(html, "html.parser")
-
-    return [
-        (
-            a.get_text(" ", strip=True),
-            urljoin(base_url, a["href"]),
-        )
-        for a in soup.select("a[href]")
-    ]
-
-
-def discover():
-    """Busca los PDF A/C/D y muestra enlaces para diagnóstico."""
-
-    response = get(BASE + "/ais")
-    candidates = get_links(response.text, response.url)
-
-    print(
-        "=== ENLACES ENCONTRADOS EN AIS DINACIA ===",
-        flush=True,
-    )
-
-    print(
-        f"URL consultada: {response.url}",
-        flush=True,
-    )
-
-    print(
-        f"Total de enlaces encontrados: {len(candidates)}",
-        flush=True,
-    )
-
-    for label, url in candidates:
-        combined = (label + " " + url).upper()
-
-        if any(
-            term in combined
-            for term in ("PIB", "NOTAM", "SERIE", ".PDF")
-        ):
-            print(
-                f"TEXTO: {label} | URL: {url}",
-                flush=True,
-            )
-
-    print(
-        "=== FIN DE ENLACES ===",
-        flush=True,
-    )
-
-    result = {}
-
-    for series, prefix in PREFIXES.items():
-        pdfs = []
-
-        for label, url in candidates:
-            filename = urlparse(url).path.rsplit("/", 1)[-1]
-
-            if re.match(
-                rf"^{prefix}\d+[^/]*\.pdf$",
-                filename,
-                re.IGNORECASE,
-            ):
-                pdfs.append(url)
-
-        pdfs = list(dict.fromkeys(pdfs))
-
-        print(
-            f"Serie {series}: "
-            f"{len(pdfs)} PDF encontrados "
-            f"con prefijo {prefix}",
-            flush=True,
-        )
-
-        if len(pdfs) != 1:
-            raise RuntimeError(
-                f"Serie {series}: se esperaba un PDF "
-                f"{prefix} inequívoco; encontrados {len(pdfs)}"
-            )
-
-        result[series] = pdfs[0]
-
-    return result
-
-
-def extract_pdf(url):
-    response = get(url)
-
-    if not response.content.startswith(b"%PDF"):
-        raise ValueError(
-            "La respuesta no es un PDF válido"
-        )
-
-    reader = PdfReader(io.BytesIO(response.content))
-
-    text = "\n".join(
-        page.extract_text() or ""
-        for page in reader.pages
-    )
-
-    if len(text.strip()) < 100:
-        raise ValueError(
-            "PDF sin texto extraíble suficiente"
-        )
-
-    return len(reader.pages), text
-
-
-def main():
-    result = {
-        "generated_at": datetime.now(
-            timezone.utc
-        ).isoformat(),
-        "source": BASE + "/ais",
-        "verified": False,
-        "status": "NO_VERIFICADO",
-        "series": {},
-        "errors": [],
-        "notams": [],
-        "note": (
-            "EXTRACCION EXPERIMENTAL. "
-            "NO APTO PARA PLANIFICACION OPERACIONAL. "
-            "No se valida vigencia, cancelaciones, "
-            "horarios ni completitud."
-        ),
+{
+  "generated_at": "2026-11-11T13:39:05.489801+00:00",
+  "source": "https://www.dinacia.gub.uy/ais",
+  "verified": false,
+  "status": "DESCARGA_COMPLETA_PENDIENTE_VALIDACION",
+  "series": {
+    "A": {
+      "url": "https://www.dinacia.gub.uy/sites/default/files/2026-11/PIBSERIEA2611110946.pdf",
+      "pages": 6,
+      "text_chars": 13566,
+      "notam_id_candidates": [
+        "A0818/26",
+        "A0935/26",
+        "A1025/26",
+        "A1026/26",
+        "A1200/26",
+        "A1201/26",
+        "A1221/26",
+        "A1341/26",
+        "A1344/26",
+        "A1351/26",
+        "A1352/26",
+        "A1372/26",
+        "A1425/26",
+        "A1426/26",
+        "A1427/26",
+        "A1428/26",
+        "A1479/26",
+        "A1487/26",
+        "A1525/26",
+        "A1543/26",
+        "A1551/26",
+        "A1552/26",
+        "A1557/26",
+        "A1558/26",
+        "A1568/26",
+        "A1569/26",
+        "A1589/26",
+        "A1598/26",
+        "A1601/26",
+        "A1602/26",
+        "A1624/26",
+        "A1638/26",
+        "A1691/26",
+        "A1694/26",
+        "A1701/26",
+        "A1703/26",
+        "A1706/26",
+        "A1721/26",
+        "A1723/26",
+        "A1725/26",
+        "A1730/26",
+        "A1757/26",
+        "A1761/26",
+        "A1762/26",
+        "A1767/26",
+        "A1768/26",
+        "A1769/26",
+        "A1772/26",
+        "A1797/26",
+        "A1798/26",
+        "A1805/26",
+        "A1806/26",
+        "A1817/26",
+        "A1820/26",
+        "A1821/26",
+        "A1822/26",
+        "A1826/26",
+        "A1830/26",
+        "A1831/26",
+        "A1832/26",
+        "A1844/26",
+        "A1845/26",
+        "A1846/26",
+        "A1847/26",
+        "A1848/26",
+        "A1849/26",
+        "A1850/26",
+        "A1851/26",
+        "A1852/26",
+        "A1854/26",
+        "A1856/26",
+        "A1857/26",
+        "A1859/26",
+        "A1860/26",
+        "A1861/26",
+        "A1862/26",
+        "A1863/26",
+        "A1864/26",
+        "A1870/26",
+        "A1875/26",
+        "A1876/26",
+        "A1877/26",
+        "A1878/26",
+        "A1880/26"
+      ],
+      "candidate_count": 84
+    },
+    "C": {
+      "url": "https://www.dinacia.gub.uy/sites/default/files/2026-11/PIBSERIEC2611110946.pdf",
+      "pages": 7,
+      "text_chars": 16924,
+      "notam_id_candidates": [
+        "C0818/26",
+        "C0935/26",
+        "C1025/26",
+        "C1026/26",
+        "C1200/26",
+        "C1201/26",
+        "C1221/26",
+        "C1341/26",
+        "C1344/26",
+        "C1351/26",
+        "C1352/26",
+        "C1372/26",
+        "C1425/26",
+        "C1426/26",
+        "C1427/26",
+        "C1428/26",
+        "C1479/26",
+        "C1487/26",
+        "C1525/26",
+        "C1543/26",
+        "C1551/26",
+        "C1552/26",
+        "C1557/26",
+        "C1558/26",
+        "C1568/26",
+        "C1569/26",
+        "C1589/26",
+        "C1598/26",
+        "C1601/26",
+        "C1602/26",
+        "C1624/26",
+        "C1638/26",
+        "C1691/26",
+        "C1694/26",
+        "C1701/26",
+        "C1703/26",
+        "C1706/26",
+        "C1721/26",
+        "C1723/26",
+        "C1725/26",
+        "C1730/26",
+        "C1757/26",
+        "C1761/26",
+        "C1762/26",
+        "C1767/26",
+        "C1768/26",
+        "C1769/26",
+        "C1772/26",
+        "C1797/26",
+        "C1798/26",
+        "C1805/26",
+        "C1806/26",
+        "C1817/26",
+        "C1820/26",
+        "C1821/26",
+        "C1822/26",
+        "C1826/26",
+        "C1830/26",
+        "C1831/26",
+        "C1832/26",
+        "C1844/26",
+        "C1845/26",
+        "C1846/26",
+        "C1847/26",
+        "C1848/26",
+        "C1849/26",
+        "C1850/26",
+        "C1851/26",
+        "C1852/26",
+        "C1854/26",
+        "C1856/26",
+        "C1857/26",
+        "C1860/26",
+        "C1861/26",
+        "C1862/26",
+        "C1863/26",
+        "C1864/26",
+        "C1870/26",
+        "C1875/26",
+        "C1876/26",
+        "C1877/26",
+        "C1878/26"
+      ],
+      "candidate_count": 82
+    },
+    "D": {
+      "url": "https://www.dinacia.gub.uy/sites/default/files/2026-11/PIBSERIED2611110946.pdf",
+      "pages": 2,
+      "text_chars": 2722,
+      "notam_id_candidates": [
+        "D0053/26",
+        "D0063/26",
+        "D0068/26",
+        "D0069/26",
+        "D0070/26",
+        "D0071/26",
+        "D0072/26",
+        "D0076/26",
+        "D0077/26",
+        "D0078/26",
+        "D0079/26",
+        "D0081/26"
+      ],
+      "candidate_count": 12
     }
-
-    try:
-        urls = discover()
-
-        for series, url in urls.items():
-            try:
-                pages, text = extract_pdf(url)
-
-                pattern = (
-                    rf"(?<![A-Z0-9])"
-                    rf"{series}\s*\d{{4}}\s*/\s*\d{{2}}"
-                    rf"(?!\d)"
-                )
-
-                ids = sorted({
-                    re.sub(r"\s+", "", match.upper())
-                    for match in re.findall(
-                        pattern,
-                        text,
-                        re.IGNORECASE,
-                    )
-                })
-
-                result["series"][series] = {
-                    "url": url,
-                    "pages": pages,
-                    "text_chars": len(text),
-                    "notam_id_candidates": ids,
-                    "candidate_count": len(ids),
-                }
-
-                print(
-                    f"Serie {series}: "
-                    f"{pages} páginas; "
-                    f"{len(ids)} identificadores candidatos; "
-                    "PDF OK",
-                    flush=True,
-                )
-
-            except Exception as error:
-                result["errors"].append(
-                    f"Serie {series}: {error}"
-                )
-
-        if (
-            len(result["series"]) == 3
-            and not result["errors"]
-        ):
-            result["status"] = (
-                "DESCARGA_COMPLETA_PENDIENTE_VALIDACION"
-            )
-
-    except Exception as error:
-        result["errors"].append(str(error))
-
-    OUT.write_text(
-        json.dumps(
-            result,
-            ensure_ascii=False,
-            indent=2,
-        ) + "\n",
-        encoding="utf-8",
-    )
-
-    print(
-        json.dumps(
-            {
-                "status": result["status"],
-                "series": list(result["series"]),
-                "errors": result["errors"],
-            },
-            ensure_ascii=False,
-        ),
-        flush=True,
-    )
-
-    print(
-        f"Archivo generado: {OUT.name}",
-        flush=True,
-    )
-
-    if result["errors"]:
-        sys.exit(1)
-
-
-if __name__ == "__main__":
-    main()
+  },
+  "errors": [],
+  "notams": [],
+  "note": "EXTRACCION EXPERIMENTAL. NO APTO PARA PLANIFICACION OPERACIONAL. No se valida vigencia, cancelaciones, horarios ni completitud."
+}
