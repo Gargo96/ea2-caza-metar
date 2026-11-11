@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """Descarga experimental de PIB DINACIA, series A, C y D.
 
@@ -21,10 +22,11 @@ BASE = "https://www.dinacia.gub.uy"
 AIS_URL = BASE + "/ais"
 OUT = Path(__file__).with_name("notam.json")
 
+# Prefijos reales de los PDF publicados por DINACIA.
 PREFIXES = {
-    "A": "PIBSERIEA",
-    "C": "PIBSERIEC",
-    "D": "PIBSERIED",
+    "A": "IPIB",
+    "C": "NPIB",
+    "D": "DPIB",
 }
 
 session = requests.Session()
@@ -40,6 +42,8 @@ def get(url):
 
 
 def discover():
+    """Busca los PDF de las series A, C y D en AIS DINACIA."""
+
     response = get(AIS_URL)
     soup = BeautifulSoup(response.text, "html.parser")
 
@@ -68,15 +72,23 @@ def discover():
         if len(matches) != 1:
             raise RuntimeError(
                 f"Serie {series}: se encontraron "
-                f"{len(matches)} PDF; se esperaba uno"
+                f"{len(matches)} PDF; se esperaba uno. "
+                "Revisar publicación AIS DINACIA."
             )
 
         found[series] = matches[0]
+
+        print(
+            f"Serie {series}: {matches[0]}",
+            flush=True
+        )
 
     return found
 
 
 def extract_pdf(url):
+    """Descarga un PDF y extrae su texto."""
+
     response = get(url)
 
     if not response.content.startswith(b"%PDF"):
@@ -96,6 +108,7 @@ def extract_pdf(url):
 
 
 def main():
+
     result = {
         "generated_at": datetime.now(
             timezone.utc
@@ -107,9 +120,10 @@ def main():
         "notams": [],
         "errors": [],
         "note": (
-            "Extraccion experimental. "
-            "No apto como fuente unica de "
-            "informacion operacional."
+            "Extraccion experimental de PIB DINACIA. "
+            "No apto como fuente unica de informacion "
+            "operacional. No verifica vigencia, "
+            "cancelaciones ni completitud."
         ),
     }
 
@@ -117,24 +131,46 @@ def main():
         urls = discover()
 
         for series, url in urls.items():
+
             try:
                 pages, text = extract_pdf(url)
+
+                # Identificadores candidatos, no NOTAM validados.
+                pattern = (
+                    rf"(?<![A-Z0-9])"
+                    rf"{series}\s*\d{{4}}\s*/\s*\d{{2}}"
+                    rf"(?!\d)"
+                )
+
+                ids = sorted({
+                    re.sub(r"\s+", "", match.upper())
+                    for match in re.findall(
+                        pattern,
+                        text,
+                        re.IGNORECASE
+                    )
+                })
 
                 result["series"][series] = {
                     "url": url,
                     "pages": pages,
                     "text_chars": len(text),
+                    "candidate_count": len(ids),
+                    "notam_id_candidates": ids,
                     "raw_text": text,
                 }
 
                 print(
                     f"Serie {series}: "
                     f"{pages} paginas, "
-                    f"{len(text)} caracteres",
-                    flush=True,
+                    f"{len(text)} caracteres, "
+                    f"{len(ids)} identificadores candidatos. "
+                    "PDF OK",
+                    flush=True
                 )
 
             except Exception as error:
+
                 result["errors"].append(
                     f"Serie {series}: {error}"
                 )
@@ -150,13 +186,14 @@ def main():
     except Exception as error:
         result["errors"].append(str(error))
 
+    # Guardar el JSON incluso si ocurre un error.
     OUT.write_text(
         json.dumps(
             result,
             ensure_ascii=False,
             indent=2
         ) + "\n",
-        encoding="utf-8",
+        encoding="utf-8"
     )
 
     print(
@@ -165,10 +202,13 @@ def main():
             "series": list(result["series"]),
             "errors": result["errors"],
         }, ensure_ascii=False),
-        flush=True,
+        flush=True
     )
 
-    print(f"Archivo generado: {OUT.name}", flush=True)
+    print(
+        f"Archivo generado: {OUT.name}",
+        flush=True
+    )
 
     if result["errors"]:
         sys.exit(1)
