@@ -17,8 +17,8 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Instalar dependencias
-        run: pip install requests beautifulsoup4 pymupdf
+          name: Instalar dependencias
+          run: pip install requests beautifulsoup4 pymupdf pypdf
       - name: Extraer candidatos de NOTAM
         run: python actualizar_notam.py
       - name: Guardar JSON para revision
