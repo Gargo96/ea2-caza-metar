@@ -1,3 +1,4 @@
+
 name: Extraer NOTAM DINACIA - prueba
 
 on:
@@ -10,17 +11,22 @@ jobs:
   extraer:
     runs-on: ubuntu-latest
     timeout-minutes: 8
+
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
+
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          name: Instalar dependencias
-          run: pip install requests beautifulsoup4 pymupdf pypdf
+
+      - name: Instalar dependencias
+        run: python -m pip install requests beautifulsoup4 pymupdf pypdf
+
       - name: Extraer candidatos de NOTAM
         run: python actualizar_notam.py
+
       - name: Guardar JSON para revision
         uses: actions/upload-artifact@v4
         with:
