@@ -1,10 +1,12 @@
 
 #!/usr/bin/env python3
-"""Descarga PIB DINACIA y diagnostica la extracción de NOTAM/TWR.
+"""EA2 CAZA - Extracción experimental de PIB DINACIA.
 
-Series A, C y D.
-Conserva notam.json y agrega diagnósticos.
-NO verifica vigencia, cancelaciones ni disponibilidad operacional.
+Descarga series A, C y D, separa bloques NOTAM del formato
+PIB y detecta candidatos de restricciones TWR.
+
+No valida integridad, vigencia, cancelaciones ni horarios
+complejos. NO habilita estados operacionales automáticos.
 """
 
 import io
@@ -21,7 +23,7 @@ from pypdf import PdfReader
 
 BASE = "https://www.dinacia.gub.uy"
 AIS_URL = BASE + "/ais"
-OUT = Path(__file__).resolve().with_name("notam.json")
+OUT = Path(__file__).with_name("notam.json")
 
 PREFIXES = {
     "A": "IPIB",
@@ -29,32 +31,52 @@ PREFIXES = {
     "D": "DPIB",
 }
 
-NOTAM_ID = re.compile(
-    r"(?<![A-Z0-9])([ACD])\s*(\d{4})\s*/\s*(\d{2})(?!\d)",
+# En los PIB observados, los NOTAM aparecen como:
+# A1703/26 NOTAM From ... - To ...
+# La expresión exige "NOTAM" para evitar dividir el
+# documento por referencias a otros identificadores.
+HEADER = re.compile(
+    r"(?<![A-Z0-9])([ACD])\s*(\d{4})\s*/\s*(\d{2})"
+    r"\s+NOTAM\b",
     re.IGNORECASE,
 )
 
-TWR_PATTERN = re.compile(
-    r"\b(?:TWR|TOWER|TORRE|AERODROME\s+CONTROL|"
-    r"CONTROL\s+DE\s+AERODROMO)\b",
+TWR = re.compile(
+    r"\b(?:TWR|TOWER|TORRE|AERODROME CONTROL|"
+    r"CONTROL DE AERODROMO)\b",
     re.IGNORECASE,
 )
 
-RESTRICTION_PATTERN = re.compile(
-    r"\b(?:U/S|UNSERVICEABLE|NOT\s+AVBL|NOT\s+AVAILABLE|"
-    r"CLSD|CLOSED|SUSPENDED|OUT\s+OF\s+SERVICE|"
-    r"FUERA\s+DE\s+SERVICIO|NO\s+DISPONIBLE)\b",
+CLOSURE = re.compile(
+    r"\b(?:TWR\s+CLSD|TWR\s+CLOSED|"
+    r"TWR\s+NOT\s+AVBL|TWR\s+U/S|"
+    r"TOWER\s+CLOSED|TORRE\s+CERRADA)\b",
     re.IGNORECASE,
 )
 
-FIELD_E = re.compile(
-    r"(?<![A-Z0-9])E\s*\)",
+TWR_HOURS = re.compile(
+    r"\b(?:TWR\s+HR\s+SER|TWR\s+HOURS?|"
+    r"TWR\s+OPR\s+HR)\b",
     re.IGNORECASE,
+)
+
+AFIS = re.compile(r"\bAFIS\b", re.IGNORECASE)
+
+EQUIPMENT = re.compile(
+    r"\b(?:SGL\s+PISTOL|SIGNAL\s+PISTOL|"
+    r"LIGHT\s+GUN|TWR\s+FREQ|TWR\s+EQPT)\b",
+    re.IGNORECASE,
+)
+
+DATES = re.compile(
+    r"\bFrom\s+(.+?)\s+-\s+To\s+"
+    r"(.+?)(?=\.\s|Time\s+Schedule:|$)",
+    re.IGNORECASE | re.DOTALL,
 )
 
 session = requests.Session()
 session.headers.update({
-    "User-Agent": "EA2-CAZA-PIB-monitor/diagnostico-1.0"
+    "User-Agent": "EA2-CAZA-PIB-monitor/2.0"
 })
 
 
@@ -65,8 +87,6 @@ def get(url):
 
 
 def discover():
-    """Encuentra un PDF por cada serie publicada en DINACIA."""
-
     response = get(AIS_URL)
     soup = BeautifulSoup(response.text, "html.parser")
 
@@ -78,24 +98,19 @@ def discover():
     found = {}
 
     for series, prefix in PREFIXES.items():
-        matches = []
-
-        for url in links:
-            filename = urlparse(url).path.rsplit("/", 1)[-1]
-
+        matches = list(dict.fromkeys(
+            url for url in links
             if re.fullmatch(
                 rf"{prefix}\d+\.pdf",
-                filename,
+                urlparse(url).path.rsplit("/", 1)[-1],
                 re.IGNORECASE
-            ):
-                matches.append(url)
-
-        matches = list(dict.fromkeys(matches))
+            )
+        ))
 
         if len(matches) != 1:
             raise RuntimeError(
-                f"Serie {series}: se encontraron "
-                f"{len(matches)} PDF; se esperaba uno."
+                f"Serie {series}: {len(matches)} PDF; "
+                "se esperaba uno."
             )
 
         found[series] = matches[0]
@@ -104,8 +119,6 @@ def discover():
 
 
 def extract_pdf(url):
-    """Descarga el PDF y extrae texto por página."""
-
     response = get(url)
 
     if not response.content.startswith(b"%PDF"):
@@ -123,89 +136,118 @@ def extract_pdf(url):
     if len(text.strip()) < 100:
         raise ValueError("PDF sin texto suficiente")
 
-    return len(reader.pages), text
+    return len(pages), text
 
 
-def normalize(text):
-    """Normaliza espacios para facilitar la búsqueda."""
+def clean(text):
     return re.sub(r"\s+", " ", text).strip()
 
 
-def samples(pattern, text, limit=5, context=100):
-    """Devuelve muestras del texto alrededor de coincidencias."""
+def split_notams(text, series):
+    """Separa candidatos usando encabezados PIB.
 
-    results = []
+    Los límites siguen siendo heurísticos y requieren
+    validación contra el PDF original.
+    """
+    matches = [
+        match for match in HEADER.finditer(text)
+        if match.group(1).upper() == series
+    ]
 
-    for match in pattern.finditer(text):
-        start = max(0, match.start() - context)
-        end = min(len(text), match.end() + context)
+    blocks = []
 
-        results.append(
-            normalize(text[start:end])
+    for index, match in enumerate(matches):
+        start = match.start()
+
+        end = (
+            matches[index + 1].start()
+            if index + 1 < len(matches)
+            else len(text)
         )
 
-        if len(results) >= limit:
-            break
+        identifier = (
+            f"{series}{match.group(2)}/{match.group(3)}"
+        )
 
-    return results
+        body = clean(text[start:end])
+
+        blocks.append({
+            "id": identifier,
+            "text": body,
+        })
+
+    return blocks
 
 
-def analyze(text, series):
-    """Analiza el texto completo, sin depender de los bloques E)."""
+def classify_twr(text):
+    """Clasificación orientativa, no operacional."""
 
-    identifiers = sorted({
-        f"{m.group(1).upper()}{m.group(2)}/{m.group(3)}"
-        for m in NOTAM_ID.finditer(text)
-        if m.group(1).upper() == series
-    })
+    if not TWR.search(text):
+        return None
 
-    e_matches = list(FIELD_E.finditer(text))
-    twr_matches = list(TWR_PATTERN.finditer(text))
-    restriction_matches = list(
-        RESTRICTION_PATTERN.finditer(text)
-    )
+    if CLOSURE.search(text):
+        return "POSIBLE_CIERRE_TWR"
 
-    # Coincidencias cercanas: solamente candidatos,
-    # no necesariamente pertenecen al mismo NOTAM.
-    proximity_candidates = []
+    if TWR_HOURS.search(text):
+        return "MODIFICACION_HORARIO_TWR"
 
-    for match in twr_matches:
-        start = max(0, match.start() - 300)
-        end = min(len(text), match.end() + 300)
-        fragment = text[start:end]
+    if EQUIPMENT.search(text):
+        return "EQUIPAMIENTO_TWR"
 
-        if RESTRICTION_PATTERN.search(fragment):
-            proximity_candidates.append(
-                normalize(fragment)
-            )
+    return "REFERENCIA_TWR"
 
-    diagnosis = {
-        "identificadores": len(identifiers),
-        "campos_e_detectados": len(e_matches),
-        "menciones_twr": len(twr_matches),
-        "expresiones_indisponibilidad": len(
-            restriction_matches
-        ),
-        "proximidades_twr_indisponibilidad": len(
-            proximity_candidates
-        ),
-        "muestras_twr": samples(
-            TWR_PATTERN, text
-        ),
-        "muestras_campo_e": samples(
-            FIELD_E, text, limit=3
-        ),
-        "muestras_indisponibilidad": samples(
-            RESTRICTION_PATTERN, text
-        ),
-        "muestras_proximidad": proximity_candidates[:5],
+
+def extract_dates(text):
+    match = DATES.search(text)
+
+    if not match:
+        return {
+            "from_text": None,
+            "to_text": None,
+        }
+
+    return {
+        "from_text": clean(match.group(1)),
+        "to_text": clean(match.group(2)),
     }
 
-    return identifiers, diagnosis
+
+def analyze(blocks, series, source_url):
+    candidates = []
+    identifiers = set()
+
+    for block in blocks:
+        identifier = block["id"]
+        body = block["text"]
+
+        identifiers.add(identifier)
+
+        classification = classify_twr(body)
+
+        if not classification:
+            continue
+
+        dates = extract_dates(body)
+
+        candidates.append({
+            "id": identifier,
+            "series": series,
+            "classification": classification,
+            "from_text": dates["from_text"],
+            "to_text": dates["to_text"],
+            "aerodrome": None,
+            "schedule_verified": False,
+            "validity_verified": False,
+            "cancellation_verified": False,
+            "requires_review": True,
+            "source_pdf": source_url,
+            "raw_text": body[:12000],
+        })
+
+    return sorted(identifiers), candidates
 
 
 def main():
-
     result = {
         "generated_at": datetime.now(
             timezone.utc
@@ -217,13 +259,12 @@ def main():
         "notams": [],
         "twr_candidates_unverified": [],
         "twr_status_automation_enabled": False,
-        "diagnostics": {},
         "errors": [],
         "note": (
-            "Diagnostico experimental de PIB DINACIA. "
-            "No valida vigencia ni cancelaciones. "
-            "No apto como fuente unica de informacion "
-            "operacional."
+            "Candidatos extraidos de PIB DINACIA. "
+            "No valida vigencia, cancelaciones, horarios "
+            "parciales ni completitud. No utilizar como "
+            "fuente unica de informacion operacional."
         ),
     }
 
@@ -231,12 +272,15 @@ def main():
         urls = discover()
 
         for series, url in urls.items():
-
             try:
                 pages, raw_text = extract_pdf(url)
 
-                identifiers, diagnosis = analyze(
+                blocks = split_notams(
                     raw_text, series
+                )
+
+                identifiers, candidates = analyze(
+                    blocks, series, url
                 )
 
                 result["series"][series] = {
@@ -248,51 +292,24 @@ def main():
                     "raw_text": raw_text,
                 }
 
-                result["diagnostics"][series] = diagnosis
+                result[
+                    "twr_candidates_unverified"
+                ].extend(candidates)
 
                 print(
                     f"Serie {series}: "
                     f"{pages} paginas, "
-                    f"{len(identifiers)} IDs candidatos. "
-                    "PDF OK",
+                    f"{len(blocks)} bloques, "
+                    f"{len(candidates)} candidatos TWR.",
                     flush=True
                 )
 
-                print(
-                    f"DIAGNOSTICO {series}: "
-                    f"campos_E={diagnosis['campos_e_detectados']}, "
-                    f"menciones_TWR={diagnosis['menciones_twr']}, "
-                    f"indisponibilidad="
-                    f"{diagnosis['expresiones_indisponibilidad']}, "
-                    f"proximidades="
-                    f"{diagnosis['proximidades_twr_indisponibilidad']}",
-                    flush=True
-                )
-
-                for index, sample in enumerate(
-                    diagnosis["muestras_twr"], 1
-                ):
+                for candidate in candidates:
                     print(
-                        f"MUESTRA TWR {series}-{index}: "
-                        f"{sample}",
-                        flush=True
-                    )
-
-                for index, sample in enumerate(
-                    diagnosis["muestras_campo_e"], 1
-                ):
-                    print(
-                        f"MUESTRA E {series}-{index}: "
-                        f"{sample}",
-                        flush=True
-                    )
-
-                for index, sample in enumerate(
-                    diagnosis["muestras_proximidad"], 1
-                ):
-                    print(
-                        f"MUESTRA PROXIMIDAD {series}-{index}: "
-                        f"{sample}",
+                        f"TWR {candidate['id']}: "
+                        f"{candidate['classification']} | "
+                        f"Desde: {candidate['from_text']} | "
+                        f"Hasta: {candidate['to_text']}",
                         flush=True
                     )
 
@@ -312,7 +329,6 @@ def main():
     except Exception as error:
         result["errors"].append(str(error))
 
-    # Guardar JSON incluso cuando falla alguna descarga.
     temp = OUT.with_suffix(".json.tmp")
 
     temp.write_text(
@@ -330,28 +346,11 @@ def main():
         json.dumps({
             "status": result["status"],
             "series": list(result["series"]),
-            "diagnostics": {
-                series: {
-                    "campos_E": data["campos_e_detectados"],
-                    "menciones_TWR": data["menciones_twr"],
-                    "indisponibilidad": data[
-                        "expresiones_indisponibilidad"
-                    ],
-                    "proximidades": data[
-                        "proximidades_twr_indisponibilidad"
-                    ],
-                }
-                for series, data in result[
-                    "diagnostics"
-                ].items()
-            },
+            "candidatos_twr": len(
+                result["twr_candidates_unverified"]
+            ),
             "errors": result["errors"],
         }, ensure_ascii=False),
-        flush=True
-    )
-
-    print(
-        f"Archivo generado: {OUT.name}",
         flush=True
     )
 
