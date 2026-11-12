@@ -1,12 +1,11 @@
 
 #!/usr/bin/env python3
-"""EA2 CAZA - Extracción experimental de PIB DINACIA.
+"""EA2 CAZA - Descarga y análisis experimental de PIB DINACIA.
 
-Descarga series A, C y D, separa bloques NOTAM del formato
-PIB y detecta candidatos de restricciones TWR.
-
-No valida integridad, vigencia, cancelaciones ni horarios
-complejos. NO habilita estados operacionales automáticos.
+Series A, C y D.
+Detecta bloques NOTAM y referencias a restricciones TWR.
+NO valida vigencia, cancelaciones ni horarios complejos.
+NO habilita cambios automáticos en estados TWR.
 """
 
 import io
@@ -23,7 +22,7 @@ from pypdf import PdfReader
 
 BASE = "https://www.dinacia.gub.uy"
 AIS_URL = BASE + "/ais"
-OUT = Path(__file__).with_name("notam.json")
+OUT = Path(__file__).resolve().with_name("notam.json")
 
 PREFIXES = {
     "A": "IPIB",
@@ -31,13 +30,21 @@ PREFIXES = {
     "D": "DPIB",
 }
 
-# En los PIB observados, los NOTAM aparecen como:
-# A1703/26 NOTAM From ... - To ...
-# La expresión exige "NOTAM" para evitar dividir el
-# documento por referencias a otros identificadores.
+# Identificadores NOTAM: A1703/26, C0123/26, etc.
+IDENTIFIER = re.compile(
+    r"(?<![A-Z0-9])([ACD])\s*(\d{4})\s*/\s*(\d{2})(?!\d)",
+    re.IGNORECASE,
+)
+
+# Encabezados observados en los PIB:
+# A1703/26 NOTAM From ...
+# A1703/26 NOTAMR ...
+# A1703/26 NOTAMC ...
+# Se admite texto intermedio corto y saltos de línea.
 HEADER = re.compile(
-    r"(?<![A-Z0-9])([ACD])\s*(\d{4})\s*/\s*(\d{2})"
-    r"\s+NOTAM\b",
+    r"(?<![A-Z0-9])"
+    r"([ACD])\s*(\d{4})\s*/\s*(\d{2})"
+    r"\s+NOTAM(?:N|R|C)?\b",
     re.IGNORECASE,
 )
 
@@ -54,13 +61,11 @@ CLOSURE = re.compile(
     re.IGNORECASE,
 )
 
-TWR_HOURS = re.compile(
+HOURS = re.compile(
     r"\b(?:TWR\s+HR\s+SER|TWR\s+HOURS?|"
     r"TWR\s+OPR\s+HR)\b",
     re.IGNORECASE,
 )
-
-AFIS = re.compile(r"\bAFIS\b", re.IGNORECASE)
 
 EQUIPMENT = re.compile(
     r"\b(?:SGL\s+PISTOL|SIGNAL\s+PISTOL|"
@@ -68,15 +73,9 @@ EQUIPMENT = re.compile(
     re.IGNORECASE,
 )
 
-DATES = re.compile(
-    r"\bFrom\s+(.+?)\s+-\s+To\s+"
-    r"(.+?)(?=\.\s|Time\s+Schedule:|$)",
-    re.IGNORECASE | re.DOTALL,
-)
-
 session = requests.Session()
 session.headers.update({
-    "User-Agent": "EA2-CAZA-PIB-monitor/2.0"
+    "User-Agent": "EA2-CAZA-PIB-monitor/2.1"
 })
 
 
@@ -109,8 +108,8 @@ def discover():
 
         if len(matches) != 1:
             raise RuntimeError(
-                f"Serie {series}: {len(matches)} PDF; "
-                "se esperaba uno."
+                f"Serie {series}: se encontraron "
+                f"{len(matches)} PDF; se esperaba uno."
             )
 
         found[series] = matches[0]
@@ -126,39 +125,62 @@ def extract_pdf(url):
 
     reader = PdfReader(io.BytesIO(response.content))
 
-    pages = [
+    text = "\n".join(
         page.extract_text() or ""
         for page in reader.pages
-    ]
-
-    text = "\n".join(pages)
+    )
 
     if len(text.strip()) < 100:
         raise ValueError("PDF sin texto suficiente")
 
-    return len(pages), text
+    return len(reader.pages), text
 
 
 def clean(text):
     return re.sub(r"\s+", " ", text).strip()
 
 
-def split_notams(text, series):
-    """Separa candidatos usando encabezados PIB.
+def find_headers(text, series):
+    """Localiza encabezados candidatos de la serie."""
 
-    Los límites siguen siendo heurísticos y requieren
-    validación contra el PDF original.
-    """
     matches = [
-        match for match in HEADER.finditer(text)
+        match
+        for match in HEADER.finditer(text)
         if match.group(1).upper() == series
     ]
 
+    # Diagnóstico si la extracción no encuentra encabezados.
+    if not matches:
+        print(
+            f"AVISO Serie {series}: no se encontraron "
+            "encabezados con formato ID + NOTAM.",
+            flush=True
+        )
+
+        # Mostrar ejemplos sin interpretar automáticamente.
+        examples = [
+            clean(text[max(0, m.start() - 35):m.end() + 90])
+            for m in IDENTIFIER.finditer(text)
+            if m.group(1).upper() == series
+        ][:5]
+
+        for index, example in enumerate(examples, 1):
+            print(
+                f"EJEMPLO {series}-{index}: {example}",
+                flush=True
+            )
+
+    return matches
+
+
+def split_notams(text, series):
+    """Divide el PIB por encabezados candidatos."""
+
+    matches = find_headers(text, series)
     blocks = []
 
     for index, match in enumerate(matches):
         start = match.start()
-
         end = (
             matches[index + 1].start()
             if index + 1 < len(matches)
@@ -180,71 +202,46 @@ def split_notams(text, series):
 
 
 def classify_twr(text):
-    """Clasificación orientativa, no operacional."""
-
     if not TWR.search(text):
         return None
+
+    # Evitar confundir fallas de equipamiento con
+    # indisponibilidad completa de la torre.
+    if EQUIPMENT.search(text) and not CLOSURE.search(text):
+        return "EQUIPAMIENTO_TWR"
 
     if CLOSURE.search(text):
         return "POSIBLE_CIERRE_TWR"
 
-    if TWR_HOURS.search(text):
+    if HOURS.search(text):
         return "MODIFICACION_HORARIO_TWR"
-
-    if EQUIPMENT.search(text):
-        return "EQUIPAMIENTO_TWR"
 
     return "REFERENCIA_TWR"
 
 
-def extract_dates(text):
-    match = DATES.search(text)
-
-    if not match:
-        return {
-            "from_text": None,
-            "to_text": None,
-        }
-
-    return {
-        "from_text": clean(match.group(1)),
-        "to_text": clean(match.group(2)),
-    }
-
-
-def analyze(blocks, series, source_url):
+def analyze(blocks, series, url):
     candidates = []
-    identifiers = set()
 
     for block in blocks:
-        identifier = block["id"]
-        body = block["text"]
+        classification = classify_twr(block["text"])
 
-        identifiers.add(identifier)
-
-        classification = classify_twr(body)
-
-        if not classification:
+        if classification is None:
             continue
 
-        dates = extract_dates(body)
-
         candidates.append({
-            "id": identifier,
+            "id": block["id"],
             "series": series,
             "classification": classification,
-            "from_text": dates["from_text"],
-            "to_text": dates["to_text"],
             "aerodrome": None,
-            "schedule_verified": False,
             "validity_verified": False,
+            "schedule_verified": False,
             "cancellation_verified": False,
             "requires_review": True,
-            "source_pdf": source_url,
-            "raw_text": body[:12000],
+            "source_pdf": url,
+            "raw_text": block["text"][:12000],
         })
 
-    return sorted(identifiers), candidates
+    return candidates
 
 
 def main():
@@ -261,10 +258,9 @@ def main():
         "twr_status_automation_enabled": False,
         "errors": [],
         "note": (
-            "Candidatos extraidos de PIB DINACIA. "
-            "No valida vigencia, cancelaciones, horarios "
-            "parciales ni completitud. No utilizar como "
-            "fuente unica de informacion operacional."
+            "Extraccion experimental de PIB DINACIA. "
+            "No verifica vigencia, cancelaciones, "
+            "horarios parciales ni completitud."
         ),
     }
 
@@ -275,11 +271,22 @@ def main():
             try:
                 pages, raw_text = extract_pdf(url)
 
-                blocks = split_notams(
-                    raw_text, series
-                )
+                identifiers = sorted({
+                    f"{m.group(1).upper()}{m.group(2)}/{m.group(3)}"
+                    for m in IDENTIFIER.finditer(raw_text)
+                    if m.group(1).upper() == series
+                })
 
-                identifiers, candidates = analyze(
+                blocks = split_notams(raw_text, series)
+
+                if identifiers and not blocks:
+                    raise ValueError(
+                        f"{len(identifiers)} identificadores "
+                        "detectados, pero 0 bloques NOTAM. "
+                        "Revisar formato del PDF."
+                    )
+
+                candidates = analyze(
                     blocks, series, url
                 )
 
@@ -289,6 +296,7 @@ def main():
                     "text_chars": len(raw_text),
                     "candidate_count": len(identifiers),
                     "notam_id_candidates": identifiers,
+                    "blocks_detected": len(blocks),
                     "raw_text": raw_text,
                 }
 
@@ -299,6 +307,7 @@ def main():
                 print(
                     f"Serie {series}: "
                     f"{pages} paginas, "
+                    f"{len(identifiers)} IDs, "
                     f"{len(blocks)} bloques, "
                     f"{len(candidates)} candidatos TWR.",
                     flush=True
@@ -307,15 +316,17 @@ def main():
                 for candidate in candidates:
                     print(
                         f"TWR {candidate['id']}: "
-                        f"{candidate['classification']} | "
-                        f"Desde: {candidate['from_text']} | "
-                        f"Hasta: {candidate['to_text']}",
+                        f"{candidate['classification']}",
                         flush=True
                     )
 
             except Exception as error:
                 result["errors"].append(
                     f"Serie {series}: {error}"
+                )
+                print(
+                    f"ERROR Serie {series}: {error}",
+                    flush=True
                 )
 
         if (
