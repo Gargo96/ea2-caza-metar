@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-11T23:57:56.524838+00:00",
+  "generated_at": "2026-11-12T00:13:57.011114+00:00",
   "source": "https://www.dinacia.gub.uy/ais",
   "verified": false,
   "status": "DESCARGA_COMPLETA_PENDIENTE_VALIDACION",
@@ -200,6 +200,8 @@
     }
   },
   "notams": [],
+  "twr_candidates_unverified": [],
+  "twr_status_automation_enabled": false,
   "errors": [],
-  "note": "Extraccion experimental de PIB DINACIA. No apto como fuente unica de informacion operacional. No verifica vigencia, cancelaciones ni completitud."
+  "note": "Extracción experimental. Los candidatos TWR NO indican vigencia ni disponibilidad operacional. No usar para cambiar colores automáticamente."
 }
