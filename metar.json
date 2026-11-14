@@ -1,52 +1,48 @@
 {
-  "actualizado": "2026-11-14T15:09:40.861065+00:00",
+  "actualizado": "2026-11-14T19:57:30.806570+00:00",
   "fuente": "NOAA Aviation Weather Center",
   "metars": {
     "SUDU": {
       "icaoId": "SUDU",
-      "receiptTime": "2026-11-14T14:55:05.215Z",
-      "obsTime": 1794668400,
-      "reportTime": "2026-11-14T15:00:00.000Z",
-      "temp": 28,
-      "dewp": 20,
-      "wdir": 10,
-      "wspd": 5,
+      "receiptTime": "2026-11-14T18:55:32.354Z",
+      "obsTime": 1794682800,
+      "reportTime": "2026-11-14T19:00:00.000Z",
+      "temp": 29,
+      "dewp": 19,
+      "wdir": 150,
+      "wspd": 10,
       "visib": "6+",
-      "altim": 1011,
+      "altim": 1009,
       "qcField": 0,
       "metarType": "METAR",
-      "rawOb": "METAR SUDU 141500Z 01005KT 290V100 9999 FEW015 BKN200 28/20 Q1011",
+      "rawOb": "METAR SUDU 141900Z 15010KT 110V200 9999 SCT023 29/19 Q1009",
       "lat": -33.359,
       "lon": -56.499,
       "elev": 91,
       "name": "Durazno/Santa Bernadina Arpt, DU, UY",
-      "cover": "BKN",
+      "cover": "SCT",
       "clouds": [
         {
-          "cover": "FEW",
-          "base": 1500
-        },
-        {
-          "cover": "BKN",
-          "base": 20000
+          "cover": "SCT",
+          "base": 2300
         }
       ],
       "fltCat": "VFR"
     },
     "SUMU": {
       "icaoId": "SUMU",
-      "receiptTime": "2026-11-14T15:08:19.332Z",
-      "obsTime": 1794668400,
-      "reportTime": "2026-11-14T15:00:00.000Z",
-      "temp": 25,
-      "dewp": 19,
-      "wdir": 300,
+      "receiptTime": "2026-11-14T19:00:04.479Z",
+      "obsTime": 1794682800,
+      "reportTime": "2026-11-14T19:00:00.000Z",
+      "temp": 22,
+      "dewp": 18,
+      "wdir": 150,
       "wspd": 8,
       "visib": "6+",
       "altim": 1012,
-      "qcField": 0,
+      "qcField": 16,
       "metarType": "METAR",
-      "rawOb": "METAR SUMU 141500Z 30008KT 260V350 9999 BKN023 BKN080 25/19 Q1012 TEMPO RA",
+      "rawOb": "METAR SUMU 141900Z 15008KT 9999 FEW020 SCT070 BKN120 22/18 Q1012 NOSIG",
       "lat": -34.838,
       "lon": -56.031,
       "elev": 32,
@@ -54,30 +50,34 @@
       "cover": "BKN",
       "clouds": [
         {
-          "cover": "BKN",
-          "base": 2300
+          "cover": "FEW",
+          "base": 2000
+        },
+        {
+          "cover": "SCT",
+          "base": 7000
         },
         {
           "cover": "BKN",
-          "base": 8000
+          "base": 12000
         }
       ],
-      "fltCat": "MVFR"
+      "fltCat": "VFR"
     },
     "SULS": {
       "icaoId": "SULS",
-      "receiptTime": "2026-11-14T14:51:00.261Z",
-      "obsTime": 1794668400,
-      "reportTime": "2026-11-14T15:00:00.000Z",
+      "receiptTime": "2026-11-14T18:58:54.122Z",
+      "obsTime": 1794682800,
+      "reportTime": "2026-11-14T19:00:00.000Z",
       "temp": 23,
       "dewp": 19,
-      "wdir": 40,
-      "wspd": 8,
+      "wdir": 160,
+      "wspd": 6,
       "visib": "6+",
       "altim": 1011,
       "qcField": 0,
       "metarType": "METAR",
-      "rawOb": "METAR SULS 141500Z 04008KT 9999 SCT020 OVC060 23/19 Q1011",
+      "rawOb": "METAR SULS 141900Z 16006KT 9999 FEW012 SCT026 OVC060 23/19 Q1011",
       "lat": -34.855,
       "lon": -55.094,
       "elev": 22,
@@ -85,8 +85,12 @@
       "cover": "OVC",
       "clouds": [
         {
+          "cover": "FEW",
+          "base": 1200
+        },
+        {
           "cover": "SCT",
-          "base": 2000
+          "base": 2600
         },
         {
           "cover": "OVC",
@@ -97,71 +101,72 @@
     },
     "SURV": {
       "icaoId": "SURV",
-      "receiptTime": "2026-11-14T14:51:15.622Z",
-      "obsTime": 1794668400,
-      "reportTime": "2026-11-14T15:00:00.000Z",
-      "temp": 27,
-      "dewp": 19,
-      "wdir": 10,
-      "wspd": 6,
-      "visib": "6+",
-      "altim": 1012,
-      "qcField": 0,
-      "metarType": "METAR",
-      "rawOb": "METAR SURV 141500Z 01006KT CAVOK 27/19 Q1012",
-      "lat": -30.97,
-      "lon": -55.474,
-      "elev": 201,
-      "name": "Rivera Intl, RV, UY",
-      "cover": "CAVOK",
-      "clouds": [],
-      "fltCat": "VFR"
-    },
-    "SUSO": {
-      "icaoId": "SUSO",
-      "receiptTime": "2026-11-14T14:53:41.664Z",
-      "obsTime": 1794668400,
-      "reportTime": "2026-11-14T15:00:00.000Z",
-      "temp": 30,
-      "dewp": 19,
-      "wdir": 260,
-      "wspd": 11,
+      "receiptTime": "2026-11-14T18:57:05.198Z",
+      "obsTime": 1794682800,
+      "reportTime": "2026-11-14T19:00:00.000Z",
+      "temp": 31,
+      "dewp": 18,
+      "wdir": 250,
+      "wspd": 5,
       "visib": "6+",
       "altim": 1010,
       "qcField": 0,
       "metarType": "METAR",
-      "rawOb": "METAR SUSO 141500Z 26011KT 9999 FEW020 BKN200 30/19 Q1010",
+      "rawOb": "METAR SURV 141900Z 25005KT 9999 BKN026 31/18 Q1010",
+      "lat": -30.97,
+      "lon": -55.474,
+      "elev": 201,
+      "name": "Rivera Intl, RV, UY",
+      "cover": "BKN",
+      "clouds": [
+        {
+          "cover": "BKN",
+          "base": 2600
+        }
+      ],
+      "fltCat": "MVFR"
+    },
+    "SUSO": {
+      "icaoId": "SUSO",
+      "receiptTime": "2026-11-14T19:54:40.424Z",
+      "obsTime": 1794686400,
+      "reportTime": "2026-11-14T20:00:00.000Z",
+      "temp": 32,
+      "dewp": 20,
+      "wdir": 290,
+      "wspd": 9,
+      "visib": "6+",
+      "altim": 1009,
+      "qcField": 0,
+      "metarType": "METAR",
+      "rawOb": "METAR SUSO 142000Z 29009KT 9999 SCT027 32/20 Q1009",
       "lat": -31.438,
       "lon": -57.982,
       "elev": 37,
       "name": "Salto Arpt, SL, UY",
-      "cover": "BKN",
+      "cover": "SCT",
       "clouds": [
         {
-          "cover": "FEW",
-          "base": 2000
-        },
-        {
-          "cover": "BKN",
-          "base": 20000
+          "cover": "SCT",
+          "base": 2700
         }
       ],
       "fltCat": "VFR"
     },
     "SUPU": {
       "icaoId": "SUPU",
-      "receiptTime": "2026-11-14T15:00:46.038Z",
-      "obsTime": 1794668400,
-      "reportTime": "2026-11-14T15:00:00.000Z",
-      "temp": 30,
-      "dewp": 20,
-      "wdir": 260,
-      "wspd": 12,
+      "receiptTime": "2026-11-14T19:00:42.880Z",
+      "obsTime": 1794682800,
+      "reportTime": "2026-11-14T19:00:00.000Z",
+      "temp": 31,
+      "dewp": 19,
+      "wdir": 190,
+      "wspd": 8,
       "visib": "6+",
-      "altim": 1010,
+      "altim": 1009,
       "qcField": 2,
       "metarType": "METAR",
-      "rawOb": "METAR SUPU 141500Z AUTO 26012KT 9999 FEW210/// 30/20 Q1010",
+      "rawOb": "METAR SUPU 141900Z AUTO 19008KT 160V220 9999 FEW049/// 31/19 Q1009",
       "lat": -32.362,
       "lon": -58.067,
       "elev": 23,
@@ -170,52 +175,56 @@
       "clouds": [
         {
           "cover": "FEW",
-          "base": 21000
+          "base": 4900
         }
       ],
       "fltCat": "VFR"
     },
     "SUMO": {
       "icaoId": "SUMO",
-      "receiptTime": "2026-11-14T15:00:46.144Z",
-      "obsTime": 1794668400,
-      "reportTime": "2026-11-14T15:00:00.000Z",
-      "temp": 27,
-      "dewp": 17,
-      "wdir": 240,
+      "receiptTime": "2026-11-14T19:00:44.020Z",
+      "obsTime": 1794682800,
+      "reportTime": "2026-11-14T19:00:00.000Z",
+      "temp": 29,
+      "dewp": 16,
+      "wdir": "VRB",
       "wspd": 3,
       "visib": "6+",
-      "altim": 1011,
+      "altim": 1009,
       "qcField": 2,
       "metarType": "METAR",
-      "rawOb": "METAR SUMO 141500Z AUTO 24003KT 190V280 9999 FEW230/// 27/17 Q1011",
+      "rawOb": "METAR SUMO 141900Z AUTO VRB03KT 9999 BKN110/// OVC140/// 29/16 Q1009",
       "lat": -32.34,
       "lon": -54.224,
       "elev": 113,
       "name": "Melo/Cerro Largo Arpt, CL, UY",
-      "cover": "FEW",
+      "cover": "OVC",
       "clouds": [
         {
-          "cover": "FEW",
-          "base": 23000
+          "cover": "BKN",
+          "base": 11000
+        },
+        {
+          "cover": "OVC",
+          "base": 14000
         }
       ],
       "fltCat": "VFR"
     },
     "SUCA": {
       "icaoId": "SUCA",
-      "receiptTime": "2026-11-14T14:55:56.501Z",
-      "obsTime": 1794668400,
-      "reportTime": "2026-11-14T15:00:00.000Z",
+      "receiptTime": "2026-11-14T19:53:54.190Z",
+      "obsTime": 1794686400,
+      "reportTime": "2026-11-14T20:00:00.000Z",
       "temp": 24,
-      "dewp": 20,
-      "wdir": 200,
-      "wspd": 10,
+      "dewp": 16,
+      "wdir": 130,
+      "wspd": 11,
       "visib": "6+",
       "altim": 1011,
       "qcField": 0,
       "metarType": "METAR",
-      "rawOb": "METAR SUCA 141500Z 20010KT 170V230 9999 FEW015 24/20 Q1011",
+      "rawOb": "METAR SUCA 142000Z 13011KT 9999 FEW030 24/16 Q1011",
       "lat": -34.452,
       "lon": -57.768,
       "elev": 26,
@@ -224,36 +233,31 @@
       "clouds": [
         {
           "cover": "FEW",
-          "base": 1500
+          "base": 3000
         }
       ],
       "fltCat": "VFR"
     },
     "SUCM": {
       "icaoId": "SUCM",
-      "receiptTime": "2026-11-14T15:00:46.452Z",
-      "obsTime": 1794668400,
-      "reportTime": "2026-11-14T15:00:00.000Z",
-      "temp": 27,
-      "dewp": 22,
-      "wdir": 160,
+      "receiptTime": "2026-11-14T19:00:43.944Z",
+      "obsTime": 1794682800,
+      "reportTime": "2026-11-14T19:00:00.000Z",
+      "temp": 28,
+      "dewp": 20,
+      "wdir": 170,
       "wspd": 13,
       "visib": "6+",
-      "altim": 1011,
+      "altim": 1010,
       "qcField": 2,
       "metarType": "METAR",
-      "rawOb": "METAR SUCM 141500Z AUTO 16013KT 9999 SCT110/// 27/22 Q1011",
+      "rawOb": "METAR SUCM 141900Z AUTO 17013KT 9999 NCD 28/20 Q1010",
       "lat": -33.9661,
       "lon": -58.3253,
       "elev": 13,
       "name": "Zagarzazú Intl, CO, UY",
-      "cover": "SCT",
-      "clouds": [
-        {
-          "cover": "SCT",
-          "base": 11000
-        }
-      ],
+      "cover": "CLR",
+      "clouds": [],
       "fltCat": "VFR"
     },
     "SUAG": {
@@ -285,34 +289,30 @@
     },
     "SUAA": {
       "icaoId": "SUAA",
-      "receiptTime": "2026-11-14T14:55:16.384Z",
-      "obsTime": 1794668400,
-      "reportTime": "2026-11-14T15:00:00.000Z",
-      "temp": 25,
-      "dewp": 20,
-      "wdir": 340,
-      "wspd": 5,
+      "receiptTime": "2026-11-14T19:55:36.123Z",
+      "obsTime": 1794686400,
+      "reportTime": "2026-11-14T20:00:00.000Z",
+      "temp": 24,
+      "dewp": 17,
+      "wdir": 190,
+      "wspd": 8,
       "visib": "6+",
-      "altim": 1012,
+      "altim": 1011,
       "qcField": 0,
       "metarType": "METAR",
-      "rawOb": "METAR SUAA 141500Z 34005KT 9999 BKN027 OVC200 25/20 Q1012",
+      "rawOb": "METAR SUAA 142000Z 19008KT 9999 FEW020 24/17 Q1011",
       "lat": -34.788,
       "lon": -56.263,
       "elev": 48,
       "name": "Melilla/Adami Arpt, MO, UY",
-      "cover": "OVC",
+      "cover": "FEW",
       "clouds": [
         {
-          "cover": "BKN",
-          "base": 2700
-        },
-        {
-          "cover": "OVC",
-          "base": 20000
+          "cover": "FEW",
+          "base": 2000
         }
       ],
-      "fltCat": "MVFR"
+      "fltCat": "VFR"
     }
   }
 }
